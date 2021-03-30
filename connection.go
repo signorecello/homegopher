@@ -13,13 +13,12 @@ type Connection struct {
 	Port string
 	Authorization string
 	Client *http.Client
-	SSL bool
 }
 
 
 func NewConnection(c Connection) Connection {
-	prefix := "http://"
-	if c.SSL {
+	prefix := c.Prefix
+	if prefix == "" {
 		prefix = "https://"
 	}
 
@@ -42,7 +41,7 @@ func NewConnection(c Connection) Connection {
 		log.Fatal("Need to provide a long-lived token")
 	}
 
-	conn := Connection{prefix,host, path, port, "Bearer " + c.Authorization, &http.Client{}, c.SSL}
+	conn := Connection{prefix,host, path, port, "Bearer " + c.Authorization, &http.Client{}}
 	conn.GetHealth()
 
 	return conn
