@@ -13,32 +13,32 @@ type Generic struct {
 }
 
 type AuthRequired struct {
-	Type string `json:"type"`
-	HAVersion   string `json:"ha_version"`
+	Type      string `json:"type"`
+	HAVersion string `json:"ha_version"`
 }
 
 type Auth struct {
-	Type string `json:"type"`
+	Type        string `json:"type"`
 	AccessToken string `json:"access_token"`
 }
 
 type Result struct {
-	ID          int      `json:"id"`
-	Type string   `json:"type"`
-	Success     bool     `json:"success"`
-	Result      struct{} `json:"result"`
+	ID      int      `json:"id"`
+	Type    string   `json:"type"`
+	Success bool     `json:"success"`
+	Result  struct{} `json:"result"`
 }
 
 type SubscribeEvents struct {
-	ID          int    `json:"id"`
-	Type string `json:"type"`
-	EventType   string `json:"event_type"`
+	ID        int    `json:"id"`
+	Type      string `json:"type"`
+	EventType string `json:"event_type"`
 }
 
 type GenericEvent struct {
-	ID          int    `json:"id"`
-	Type string `json:"type"`
-	Event       struct {
+	ID    int    `json:"id"`
+	Type  string `json:"type"`
+	Event struct {
 		EventType string `json:"event_type"`
 	}
 }
@@ -48,7 +48,7 @@ type GenericStateChangedEvent struct {
 	Type  string `json:"type"`
 	Event struct {
 		Data struct {
-			EntityID string `json:"entity_id"`
+			EntityID string          `json:"entity_id"`
 			NewState json.RawMessage `json:"new_state"`
 			OldState json.RawMessage `json:"old_state"`
 		} `json:"data"`
@@ -63,15 +63,14 @@ type GenericStateChangedEvent struct {
 	} `json:"event"`
 }
 
-
 type HAWS struct {
-	URL string
-	Auth string
-	Conn *websocket.Conn
-	Timeout time.Duration
+	URL       string
+	Auth      string
+	Conn      *websocket.Conn
+	Timeout   time.Duration
 	KeepAlive time.Time
-	Done chan bool
-	WatchFor StateChanges
+	Done      chan bool
+	WatchFor  StateChanges
 }
 
 func (h HAWS) checkLive() {
@@ -83,9 +82,9 @@ func (h HAWS) checkLive() {
 	}
 }
 
-type StateChanges struct{
+type StateChanges struct {
 	Sensor chan SensorState
-	Light chan LightState
+	Light  chan LightState
 }
 
 func NewWS(t time.Duration, sc StateChanges, url string, auth string) {
@@ -97,13 +96,13 @@ func NewWS(t time.Duration, sc StateChanges, url string, auth string) {
 	}
 
 	haws := HAWS{
-		URL: url,
-		Auth: auth,
-		Conn: c,
-		Timeout: t,
+		URL:       url,
+		Auth:      auth,
+		Conn:      c,
+		Timeout:   t,
 		KeepAlive: time.Now().Add(t),
-		Done: make(chan bool),
-		WatchFor: sc,
+		Done:      make(chan bool),
+		WatchFor:  sc,
 	}
 
 	event := make(chan json.RawMessage)
@@ -118,7 +117,6 @@ func NewWS(t time.Duration, sc StateChanges, url string, auth string) {
 		haws.routeEvent(ge.Event.EventType, e)
 	}
 }
-
 
 func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 	switch eventType {
@@ -142,16 +140,14 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 			break
 		}
 
-
 	}
 }
 
-
 func (h HAWS) subscribe(et string) {
 	e := SubscribeEvents{
-		ID:          1,
-		Type: "subscribe_events",
-		EventType:   et,
+		ID:        1,
+		Type:      "subscribe_events",
+		EventType: et,
 	}
 
 	err := h.Conn.WriteJSON(e)
@@ -162,7 +158,6 @@ func (h HAWS) subscribe(et string) {
 
 }
 
-
 func (h HAWS) authenticate() {
 	auth := Auth{Type: "auth", AccessToken: h.Auth}
 	err := h.Conn.WriteJSON(auth)
@@ -171,8 +166,6 @@ func (h HAWS) authenticate() {
 		return
 	}
 }
-
-
 
 func (h HAWS) listen(event chan json.RawMessage) {
 	go func() {
@@ -183,6 +176,7 @@ func (h HAWS) listen(event chan json.RawMessage) {
 
 			if err != nil {
 				log.Println("read:", err)
+				h.checkLive()
 				return
 			}
 
@@ -190,8 +184,6 @@ func (h HAWS) listen(event chan json.RawMessage) {
 
 			var t Generic
 			_ = json.Unmarshal(v, &t)
-
-
 
 			switch t.Type {
 			case "auth_required":

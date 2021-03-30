@@ -4,17 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 )
 
 type Light struct {
-	ID string
-	State LightState
+	ID     string
+	State  LightState
 	Client Connection
 }
-
 
 type LightState struct {
 	EntityID    string    `json:"entity_id"`
@@ -46,7 +44,7 @@ type LightState struct {
 
 func (l Light) GetState() LightState {
 	conn := l.Client
-	req, _ := http.NewRequest("GET",fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "light", l.ID), nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "light", l.ID), nil)
 	req.Header.Set("Authorization", conn.Authorization)
 
 	res, _ := conn.Client.Do(req)
@@ -55,11 +53,27 @@ func (l Light) GetState() LightState {
 	dec := json.NewDecoder(res.Body)
 	_ = dec.Decode(&state)
 
-	log.Println(state)
-
 	return state
 }
 
+func (l Light) SetState(newState string) LightState {
+	body := struct {
+		State string `json:"state"`
+	}{newState}
+	reqBody, _ := json.Marshal(body)
+
+	conn := l.Client
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "light", l.ID), bytes.NewReader(reqBody))
+	req.Header.Set("Authorization", conn.Authorization)
+
+	res, _ := conn.Client.Do(req)
+
+	var state LightState
+	dec := json.NewDecoder(res.Body)
+	_ = dec.Decode(&state)
+
+	return state
+}
 
 func (l Light) Change(service string) LightState {
 	body := struct {
@@ -69,12 +83,11 @@ func (l Light) Change(service string) LightState {
 
 	client := l.Client
 
-	req, _ := http.NewRequest("POST",fmt.Sprintf("%s%s:%s%s/services/%s/%s", client.Prefix, client.Host, client.Port, client.Path, "light", service), bytes.NewReader(reqBody))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s%s:%s%s/services/%s/%s", client.Prefix, client.Host, client.Port, client.Path, "light", service), bytes.NewReader(reqBody))
 	req.Header.Set("Authorization", client.Authorization)
 	req.Header.Set("Content-Type", "application/json")
 
 	res, _ := client.Client.Do(req)
-	fmt.Println(string(reqBody))
 
 	var state LightState
 	dec := json.NewDecoder(res.Body)
