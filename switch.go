@@ -15,12 +15,16 @@ type Switch struct {
 	Client Connection
 }
 
+type SwitchAttributes struct {
+	Test string `json:"test"`
+}
+
 type SwitchState struct {
-	EntityID    string    `json:"entity_id"`
-	LastChanged time.Time `json:"last_changed"`
-	State       string    `json:"state"`
-	//Attributes  struct {} `json:"attributes"`
-	LastUpdated time.Time `json:"last_updated"`
+	EntityID    string           `json:"entity_id"`
+	LastChanged time.Time        `json:"last_changed"`
+	State       string           `json:"state"`
+	Attributes  SwitchAttributes `json:"attributes"`
+	LastUpdated time.Time        `json:"last_updated"`
 	Context     struct {
 		ID       string      `json:"id"`
 		ParentID interface{} `json:"parent_id"`
@@ -42,10 +46,11 @@ func (s Switch) GetState() SwitchState {
 	return state
 }
 
-func (s Switch) SetState(newState string) SwitchState {
+func (s Switch) SetState(newState string, attributes SwitchAttributes) SwitchState {
 	body := struct {
-		State string `json:"state"`
-	}{newState}
+		State      string           `json:"state"`
+		Attributes SwitchAttributes `json:"attributes"`
+	}{newState, attributes}
 	reqBody, _ := json.Marshal(body)
 
 	conn := s.Client
@@ -61,7 +66,7 @@ func (s Switch) SetState(newState string) SwitchState {
 	return state
 }
 
-func (s Switch) Change(service string) SwitchState {
+func (s Switch) Change(service string) int {
 	body := struct {
 		EntityID string `json:"entity_id"`
 	}{fmt.Sprintf("%s.%s", "switch", s.ID)}
@@ -76,13 +81,22 @@ func (s Switch) Change(service string) SwitchState {
 	res, err := client.Client.Do(req)
 	if err != nil {
 		log.Println("Error: ", err)
-		return s.State
 	}
 
-	var state SwitchState
-	dec := json.NewDecoder(res.Body)
-	_ = dec.Decode(&state)
+	return res.StatusCode
+}
 
-	return state
+type SwitchStateChanged struct {
+	EntityID    string
+	SwitchState SwitchState
+}
 
+var swSubs = make(map[string]chan SwitchStateChanged)
+
+func ListenSWS(entityID string) chan SwitchStateChanged {
+	if swSubs[entityID] == nil {
+		swSubs[entityID] = make(chan SwitchStateChanged)
+	}
+
+	return swSubs[entityID]
 }

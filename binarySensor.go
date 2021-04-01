@@ -14,12 +14,16 @@ type BinarySensor struct {
 	Client Connection
 }
 
+type BinarySensorAttributes struct {
+	Test string `json:"test"`
+}
+
 type BinarySensorState struct {
-	EntityID    string    `json:"entity_id"`
-	LastChanged time.Time `json:"last_changed"`
-	State       string    `json:"state"`
-	//Attributes  struct {} `json:"attributes"`
-	LastUpdated time.Time `json:"last_updated"`
+	EntityID    string                 `json:"entity_id"`
+	LastChanged time.Time              `json:"last_changed"`
+	State       string                 `json:"state"`
+	Attributes  BinarySensorAttributes `json:"attributes"`
+	LastUpdated time.Time              `json:"last_updated"`
 	Context     struct {
 		ID       string      `json:"id"`
 		ParentID interface{} `json:"parent_id"`
@@ -41,10 +45,11 @@ func (bs BinarySensor) GetState() BinarySensorState {
 	return state
 }
 
-func (bs BinarySensor) SetState(newState string) BinarySensorState {
+func (bs BinarySensor) SetState(newState string, attributes BinarySensorAttributes) BinarySensorState {
 	body := struct {
-		State string `json:"state"`
-	}{newState}
+		State      string                 `json:"state"`
+		Attributes BinarySensorAttributes `json:"attributes"`
+	}{newState, attributes}
 	reqBody, _ := json.Marshal(body)
 
 	conn := bs.Client
@@ -58,4 +63,19 @@ func (bs BinarySensor) SetState(newState string) BinarySensorState {
 	_ = dec.Decode(&state)
 
 	return state
+}
+
+type BinarySensorStateChanged struct {
+	EntityID          string
+	BinarySensorState BinarySensorState
+}
+
+var bSensorSubs = make(map[string]chan BinarySensorStateChanged)
+
+func ListenBSS(entityID string) chan BinarySensorStateChanged {
+	if bSensorSubs[entityID] == nil {
+		bSensorSubs[entityID] = make(chan BinarySensorStateChanged)
+	}
+
+	return bSensorSubs[entityID]
 }

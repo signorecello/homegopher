@@ -14,12 +14,16 @@ type Light struct {
 	Client Connection
 }
 
+type LightAttributes struct {
+	Test string `json:"test"`
+}
+
 type LightState struct {
-	EntityID    string    `json:"entity_id"`
-	LastChanged time.Time `json:"last_changed"`
-	State       string    `json:"state"`
-	//Attributes  struct {} `json:"attributes"`
-	LastUpdated time.Time `json:"last_updated"`
+	EntityID    string          `json:"entity_id"`
+	LastChanged time.Time       `json:"last_changed"`
+	State       string          `json:"state"`
+	Attributes  LightAttributes `json:"attributes"`
+	LastUpdated time.Time       `json:"last_updated"`
 	Context     struct {
 		ID       string      `json:"id"`
 		ParentID interface{} `json:"parent_id"`
@@ -56,10 +60,12 @@ func (l Light) GetState() LightState {
 	return state
 }
 
-func (l Light) SetState(newState string) LightState {
+func (l Light) SetState(newState string, attributes LightAttributes) LightState {
 	body := struct {
-		State string `json:"state"`
-	}{newState}
+		State      string          `json:"state"`
+		Attributes LightAttributes `json:"attributes"`
+	}{newState, attributes}
+
 	reqBody, _ := json.Marshal(body)
 
 	conn := l.Client
@@ -95,4 +101,19 @@ func (l Light) Change(service string) LightState {
 
 	return state
 
+}
+
+type LightStateChanged struct {
+	EntityID   string
+	LightState LightState
+}
+
+var lightSubs = make(map[string]chan LightStateChanged)
+
+func ListenLS(entityID string) chan LightStateChanged {
+	if lightSubs[entityID] == nil {
+		lightSubs[entityID] = make(chan LightStateChanged)
+	}
+
+	return lightSubs[entityID]
 }

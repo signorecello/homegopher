@@ -69,8 +69,7 @@ type HAWS struct {
 	Conn      *websocket.Conn
 	Timeout   time.Duration
 	KeepAlive time.Time
-	Done      chan bool
-	WatchFor  StateChanges
+	AuthDone  chan bool
 }
 
 func (h HAWS) checkLive() {
@@ -78,16 +77,11 @@ func (h HAWS) checkLive() {
 		h.Conn.Close()
 
 		log.Println("reconnecting")
-		NewWS(h.Timeout, h.WatchFor, h.URL, h.Auth)
+		NewWS(h.Timeout, h.URL, h.Auth)
 	}
 }
 
-type StateChanges struct {
-	Sensor chan SensorState
-	Light  chan LightState
-}
-
-func NewWS(t time.Duration, sc StateChanges, url string, auth string) {
+func NewWS(t time.Duration, url string, auth string) {
 	dialer := websocket.Dialer{}
 
 	c, _, err := dialer.Dial(url, nil)
@@ -101,13 +95,13 @@ func NewWS(t time.Duration, sc StateChanges, url string, auth string) {
 		Conn:      c,
 		Timeout:   t,
 		KeepAlive: time.Now().Add(t),
-		Done:      make(chan bool),
-		WatchFor:  sc,
+		AuthDone:  make(chan bool),
 	}
 
 	event := make(chan json.RawMessage)
 	go haws.listen(event)
-	if <-haws.Done {
+
+	if !<-haws.AuthDone {
 		haws.subscribe("state_changed")
 	}
 
@@ -124,22 +118,57 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 		var sce GenericStateChangedEvent
 		_ = json.Unmarshal(event, &sce)
 
-		domain := strings.Split(sce.Event.Data.EntityID, ".")[0]
+		split := strings.Split(sce.Event.Data.EntityID, ".")
+		domain := split[0]
+		entity := split[1]
+
 		switch domain {
 		case "light":
 			var l LightState
 			_ = json.Unmarshal(sce.Event.Data.NewState, &l)
-			h.WatchFor.Light <- l
-			break
+
+			select {
+			case ListenLS(entity) <- struct {
+				EntityID   string
+				LightState LightState
+			}{EntityID: entity, LightState: l}:
+			default:
+			}
 		case "sensor":
 			var s SensorState
 			_ = json.Unmarshal(sce.Event.Data.NewState, &s)
-			h.WatchFor.Sensor <- s
-			break
-		default:
-			break
-		}
 
+			select {
+			case ListenSS(entity) <- struct {
+				EntityID    string
+				SensorState SensorState
+			}{EntityID: entity, SensorState: s}:
+			default:
+			}
+		case "binary_sensor":
+			var bs BinarySensorState
+			_ = json.Unmarshal(sce.Event.Data.NewState, &bs)
+
+			select {
+			case ListenBSS(entity) <- struct {
+				EntityID          string
+				BinarySensorState BinarySensorState
+			}{EntityID: entity, BinarySensorState: bs}:
+			default:
+			}
+		case "switch":
+			var s SwitchState
+			_ = json.Unmarshal(sce.Event.Data.NewState, &s)
+			select {
+			case ListenSWS(entity) <- struct {
+				EntityID    string
+				SwitchState SwitchState
+			}{EntityID: entity, SwitchState: s}:
+			default:
+			}
+		default:
+		}
+	default:
 	}
 }
 
@@ -153,9 +182,7 @@ func (h HAWS) subscribe(et string) {
 	err := h.Conn.WriteJSON(e)
 	if err != nil {
 		log.Println("write:", err)
-		return
 	}
-
 }
 
 func (h HAWS) authenticate() {
@@ -168,8 +195,7 @@ func (h HAWS) authenticate() {
 }
 
 func (h HAWS) listen(event chan json.RawMessage) {
-	go func() {
-		defer close(h.Done)
+	func() {
 		for {
 			var v json.RawMessage
 			err := h.Conn.ReadJSON(&v)
@@ -193,10 +219,10 @@ func (h HAWS) listen(event chan json.RawMessage) {
 				break
 			case "auth_invalid":
 				log.Println("Auth failed")
-				h.Done <- true
+				close(h.AuthDone)
 			case "auth_ok":
 				log.Println("Auth OK")
-				h.Done <- true
+				close(h.AuthDone)
 				break
 			case "event":
 				h.KeepAlive = time.Now().Add(h.Timeout)

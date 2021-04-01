@@ -5,7 +5,6 @@ import (
 	ha "github.com/signorecello/homegopher"
 	"log"
 	"os"
-	"time"
 )
 
 func main() {
@@ -21,7 +20,7 @@ func main() {
 	}
 	HA := ha.NewConnection(conn)
 
-	date := HA.NewSensor("date")
+	date := HA.NewSensor("some_sensor")
 	dateState := date.GetState().State
 	log.Println(dateState)
 
@@ -31,27 +30,5 @@ func main() {
 	light := HA.NewLight("some_light")
 	light.Change("toggle")
 
-	ss := make(chan ha.SensorState)
-	ls := make(chan ha.LightState)
-
-	stateChanges := ha.StateChanges{Sensor: ss, Light: ls}
-	go ha.NewWS(
-		time.Second*10,
-		stateChanges,
-		os.Getenv("WSURL"),
-		os.Getenv("AUTHORIZATION"),
-	)
-
-	go func() {
-		for s := range ss {
-			log.Println("Sensor state change: ", s.EntityID)
-		}
-	}()
-
-	go func() {
-		for s := range ls {
-			log.Println("Sensor state change: ", s.EntityID)
-		}
-	}()
 
 }

@@ -14,12 +14,16 @@ type Sensor struct {
 	Client Connection
 }
 
+type SensorAttributes struct {
+	Test string `json:"test"`
+}
+
 type SensorState struct {
-	EntityID    string    `json:"entity_id"`
-	LastChanged time.Time `json:"last_changed"`
-	State       string    `json:"state"`
-	//Attributes  struct {} `json:"attributes"`
-	LastUpdated time.Time `json:"last_updated"`
+	EntityID    string           `json:"entity_id"`
+	LastChanged time.Time        `json:"last_changed"`
+	State       string           `json:"state"`
+	Attributes  SensorAttributes `json:"attributes"`
+	LastUpdated time.Time        `json:"last_updated"`
 	Context     struct {
 		ID       string      `json:"id"`
 		ParentID interface{} `json:"parent_id"`
@@ -41,10 +45,11 @@ func (s Sensor) GetState() SensorState {
 	return state
 }
 
-func (s Sensor) SetState(newState string) SensorState {
+func (s Sensor) SetState(newState string, attributes SensorAttributes) SensorState {
 	body := struct {
-		State string `json:"state"`
-	}{newState}
+		State      string           `json:"state"`
+		Attributes SensorAttributes `json:"attributes"`
+	}{newState, attributes}
 	reqBody, _ := json.Marshal(body)
 
 	conn := s.Client
@@ -58,4 +63,19 @@ func (s Sensor) SetState(newState string) SensorState {
 	_ = dec.Decode(&state)
 
 	return state
+}
+
+type SensorStateChanged struct {
+	EntityID    string
+	SensorState SensorState
+}
+
+var sensorSubs = make(map[string]chan SensorStateChanged)
+
+func ListenSS(entityID string) chan SensorStateChanged {
+	if sensorSubs[entityID] == nil {
+		sensorSubs[entityID] = make(chan SensorStateChanged)
+	}
+
+	return sensorSubs[entityID]
 }
