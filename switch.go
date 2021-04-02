@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"bytes"
@@ -15,9 +15,7 @@ type Switch struct {
 	Client Connection
 }
 
-type SwitchAttributes struct {
-	Test string `json:"test"`
-}
+type SwitchAttributes map[string]interface{}
 
 type SwitchState struct {
 	EntityID    string           `json:"entity_id"`
@@ -32,7 +30,15 @@ type SwitchState struct {
 	} `json:"context"`
 }
 
-func (s Switch) GetState() SwitchState {
+type SwitchStateChanged struct {
+	EntityID    string
+	SwitchState SwitchState
+}
+
+var swSubs = make(map[string]chan SwitchStateChanged)
+
+
+func (s *Switch) GetState() SwitchState {
 	conn := s.Client
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "switch", s.ID), nil)
 	req.Header.Set("Authorization", conn.Authorization)
@@ -46,7 +52,7 @@ func (s Switch) GetState() SwitchState {
 	return state
 }
 
-func (s Switch) SetState(newState string, attributes SwitchAttributes) SwitchState {
+func (s *Switch) SetState(newState string, attributes SwitchAttributes) SwitchState {
 	body := struct {
 		State      string           `json:"state"`
 		Attributes SwitchAttributes `json:"attributes"`
@@ -66,7 +72,7 @@ func (s Switch) SetState(newState string, attributes SwitchAttributes) SwitchSta
 	return state
 }
 
-func (s Switch) Change(service string) int {
+func (s *Switch) Change(service string) int {
 	body := struct {
 		EntityID string `json:"entity_id"`
 	}{fmt.Sprintf("%s.%s", "switch", s.ID)}
@@ -86,17 +92,10 @@ func (s Switch) Change(service string) int {
 	return res.StatusCode
 }
 
-type SwitchStateChanged struct {
-	EntityID    string
-	SwitchState SwitchState
-}
-
-var swSubs = make(map[string]chan SwitchStateChanged)
-
-func ListenSWS(entityID string) chan SwitchStateChanged {
-	if swSubs[entityID] == nil {
-		swSubs[entityID] = make(chan SwitchStateChanged)
+func (sw *Switch) Listen() chan SwitchStateChanged {
+	if swSubs[sw.ID] == nil {
+		swSubs[sw.ID] = make(chan SwitchStateChanged)
 	}
 
-	return swSubs[entityID]
+	return swSubs[sw.ID]
 }

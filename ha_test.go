@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"github.com/joho/godotenv"
@@ -60,21 +60,21 @@ func TestSwitch(t *testing.T) {
 	log.Println(status)
 
 	// listening to the state changed channel for that switch
-	listen := ListenSWS("some_switch")
+	listen := test.Listen()
 
 	// now we'll prepare the special payload with the "testing" flag
 	go func() {
-		s = SwitchAttributes{Test: "testing"}
+		s = SwitchAttributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
 	// now we listen for the channel, see if we get mr. flag in the attributes
 	func(listen chan SwitchStateChanged) {
 		for l := range listen {
-			if l.SwitchState.Attributes.Test == "testing" {
+			if l.SwitchState.Attributes["Test"] == "testing" {
 				assert.Equal(t, "on", l.SwitchState.State)
 
-				s = SwitchAttributes{Test: ""}
+				s = SwitchAttributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}
@@ -98,18 +98,18 @@ func TestLight(t *testing.T) {
 	state = test.Change("turn_on")
 	assert.IsType(t, LightState{}, state)
 
-	listen := ListenLS("some_light")
+	listen := test.Listen()
 	go func() {
-		s = LightAttributes{Test: "testing"}
+		s = LightAttributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
 	func(listen chan LightStateChanged) {
 		for l := range listen {
-			if l.LightState.Attributes.Test == "testing" {
+			if l.LightState.Attributes["Test"] == "testing" {
 				assert.Equal(t, "on", l.LightState.State)
 
-				s = LightAttributes{Test: ""}
+				s = LightAttributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}
@@ -131,18 +131,18 @@ func TestSensor(t *testing.T) {
 	state = test.SetState("off", s)
 	assert.Equal(t, "off", state.State)
 
-	listen := ListenSS("some_sensor")
+	listen := test.Listen()
 	go func() {
-		s = SensorAttributes{Test: "testing"}
+		s = SensorAttributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
 	func(listen chan SensorStateChanged) {
 		for l := range listen {
-			if l.SensorState.Attributes.Test == "testing" {
+			if l.SensorState.Attributes["Test"] == "testing" {
 				assert.Equal(t, "on", l.SensorState.State)
 
-				s = SensorAttributes{Test: ""}
+				s = SensorAttributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}
@@ -164,18 +164,18 @@ func TestBinarySensor(t *testing.T) {
 	state = test.SetState("off", s)
 	assert.Equal(t, "off", state.State)
 
-	listen := ListenBSS("some_binary_sensor")
+	listen := test.Listen()
 	go func() {
-		s = BinarySensorAttributes{Test: "testing"}
+		s = BinarySensorAttributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
 	func(listen chan BinarySensorStateChanged) {
 		for l := range listen {
-			if l.BinarySensorState.Attributes.Test == "testing" {
+			if l.BinarySensorState.Attributes["Test"] == "testing" {
 				assert.Equal(t, "on", l.BinarySensorState.State)
 
-				s = BinarySensorAttributes{Test: ""}
+				s = BinarySensorAttributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}

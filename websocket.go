@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"encoding/json"
@@ -81,7 +81,7 @@ func (h HAWS) checkLive() {
 	}
 }
 
-func NewWS(t time.Duration, url string, auth string) {
+func NewWS(timeout time.Duration, url string, auth string) {
 	dialer := websocket.Dialer{}
 
 	c, _, err := dialer.Dial(url, nil)
@@ -93,8 +93,8 @@ func NewWS(t time.Duration, url string, auth string) {
 		URL:       url,
 		Auth:      auth,
 		Conn:      c,
-		Timeout:   t,
-		KeepAlive: time.Now().Add(t),
+		Timeout:   timeout,
+		KeepAlive: time.Now().Add(timeout),
 		AuthDone:  make(chan bool),
 	}
 
@@ -122,13 +122,14 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 		domain := split[0]
 		entity := split[1]
 
+		//log.Println(entity)
 		switch domain {
 		case "light":
 			var l LightState
 			_ = json.Unmarshal(sce.Event.Data.NewState, &l)
 
 			select {
-			case ListenLS(entity) <- struct {
+			case lightSubs[entity] <- struct {
 				EntityID   string
 				LightState LightState
 			}{EntityID: entity, LightState: l}:
@@ -139,7 +140,7 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 			_ = json.Unmarshal(sce.Event.Data.NewState, &s)
 
 			select {
-			case ListenSS(entity) <- struct {
+			case sensorSubs[entity] <- struct {
 				EntityID    string
 				SensorState SensorState
 			}{EntityID: entity, SensorState: s}:
@@ -150,7 +151,7 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 			_ = json.Unmarshal(sce.Event.Data.NewState, &bs)
 
 			select {
-			case ListenBSS(entity) <- struct {
+			case bSensorSubs[entity] <- struct {
 				EntityID          string
 				BinarySensorState BinarySensorState
 			}{EntityID: entity, BinarySensorState: bs}:
@@ -160,7 +161,7 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 			var s SwitchState
 			_ = json.Unmarshal(sce.Event.Data.NewState, &s)
 			select {
-			case ListenSWS(entity) <- struct {
+			case swSubs[entity] <- struct {
 				EntityID    string
 				SwitchState SwitchState
 			}{EntityID: entity, SwitchState: s}:

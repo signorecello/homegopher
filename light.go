@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"bytes"
@@ -14,9 +14,7 @@ type Light struct {
 	Client Connection
 }
 
-type LightAttributes struct {
-	Test string `json:"test"`
-}
+type LightAttributes map[string]interface{}
 
 type LightState struct {
 	EntityID    string          `json:"entity_id"`
@@ -29,24 +27,17 @@ type LightState struct {
 		ParentID interface{} `json:"parent_id"`
 		UserID   string      `json:"user_id"`
 	} `json:"context"`
-	//
-	//Transition int
-	//Profile string
-	//HsColor [2]float64
-	//XYColor [2]float64
-	//RGBColor [3]int
-	//WhiteValue int
-	//ColorTemp int
-	//Kelvin int
-	//ColorName string
-	//Brightness int
-	//BrightnessPct int
-	//BrightnessStep int
-	//Flash string
-	//Effect string
 }
 
-func (l Light) GetState() LightState {
+type LightStateChanged struct {
+	EntityID   string
+	LightState LightState
+}
+
+var lightSubs = make(map[string]chan LightStateChanged)
+
+
+func (l *Light) GetState() LightState {
 	conn := l.Client
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "light", l.ID), nil)
 	req.Header.Set("Authorization", conn.Authorization)
@@ -60,7 +51,7 @@ func (l Light) GetState() LightState {
 	return state
 }
 
-func (l Light) SetState(newState string, attributes LightAttributes) LightState {
+func (l *Light) SetState(newState string, attributes LightAttributes) LightState {
 	body := struct {
 		State      string          `json:"state"`
 		Attributes LightAttributes `json:"attributes"`
@@ -81,7 +72,7 @@ func (l Light) SetState(newState string, attributes LightAttributes) LightState 
 	return state
 }
 
-func (l Light) Change(service string) LightState {
+func (l *Light) Change(service string) LightState {
 	body := struct {
 		EntityID string `json:"entity_id"`
 	}{fmt.Sprintf("%s.%s", "light", l.ID)}
@@ -103,17 +94,11 @@ func (l Light) Change(service string) LightState {
 
 }
 
-type LightStateChanged struct {
-	EntityID   string
-	LightState LightState
-}
 
-var lightSubs = make(map[string]chan LightStateChanged)
-
-func ListenLS(entityID string) chan LightStateChanged {
-	if lightSubs[entityID] == nil {
-		lightSubs[entityID] = make(chan LightStateChanged)
+func (l *Light) Listen() chan LightStateChanged {
+	if lightSubs[l.ID] == nil {
+		lightSubs[l.ID] = make(chan LightStateChanged)
 	}
 
-	return lightSubs[entityID]
+	return lightSubs[l.ID]
 }

@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"fmt"

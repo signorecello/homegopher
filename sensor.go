@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"bytes"
@@ -14,9 +14,7 @@ type Sensor struct {
 	Client Connection
 }
 
-type SensorAttributes struct {
-	Test string `json:"test"`
-}
+type SensorAttributes map[string]interface{}
 
 type SensorState struct {
 	EntityID    string           `json:"entity_id"`
@@ -31,7 +29,14 @@ type SensorState struct {
 	} `json:"context"`
 }
 
-func (s Sensor) GetState() SensorState {
+type SensorStateChanged struct {
+	EntityID    string
+	SensorState SensorState
+}
+
+var sensorSubs = make(map[string]chan SensorStateChanged)
+
+func (s *Sensor) GetState() SensorState {
 	conn := s.Client
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "sensor", s.ID), nil)
 	req.Header.Set("Authorization", conn.Authorization)
@@ -45,7 +50,7 @@ func (s Sensor) GetState() SensorState {
 	return state
 }
 
-func (s Sensor) SetState(newState string, attributes SensorAttributes) SensorState {
+func (s *Sensor) SetState(newState string, attributes SensorAttributes) SensorState {
 	body := struct {
 		State      string           `json:"state"`
 		Attributes SensorAttributes `json:"attributes"`
@@ -65,17 +70,11 @@ func (s Sensor) SetState(newState string, attributes SensorAttributes) SensorSta
 	return state
 }
 
-type SensorStateChanged struct {
-	EntityID    string
-	SensorState SensorState
-}
 
-var sensorSubs = make(map[string]chan SensorStateChanged)
-
-func ListenSS(entityID string) chan SensorStateChanged {
-	if sensorSubs[entityID] == nil {
-		sensorSubs[entityID] = make(chan SensorStateChanged)
+func (s *Sensor) Listen() chan SensorStateChanged {
+	if sensorSubs[s.ID] == nil {
+		sensorSubs[s.ID] = make(chan SensorStateChanged)
 	}
 
-	return sensorSubs[entityID]
+	return sensorSubs[s.ID]
 }

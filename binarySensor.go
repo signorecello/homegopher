@@ -1,4 +1,4 @@
-package haclient
+package homegopher
 
 import (
 	"bytes"
@@ -14,9 +14,7 @@ type BinarySensor struct {
 	Client Connection
 }
 
-type BinarySensorAttributes struct {
-	Test string `json:"test"`
-}
+type BinarySensorAttributes map[string]interface{}
 
 type BinarySensorState struct {
 	EntityID    string                 `json:"entity_id"`
@@ -31,7 +29,15 @@ type BinarySensorState struct {
 	} `json:"context"`
 }
 
-func (bs BinarySensor) GetState() BinarySensorState {
+type BinarySensorStateChanged struct {
+	EntityID          string
+	BinarySensorState BinarySensorState
+}
+
+var bSensorSubs = make(map[string]chan BinarySensorStateChanged)
+
+
+func (bs *BinarySensor) GetState() BinarySensorState {
 	conn := bs.Client
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "binary_sensor", bs.ID), nil)
 	req.Header.Set("Authorization", conn.Authorization)
@@ -45,7 +51,7 @@ func (bs BinarySensor) GetState() BinarySensorState {
 	return state
 }
 
-func (bs BinarySensor) SetState(newState string, attributes BinarySensorAttributes) BinarySensorState {
+func (bs *BinarySensor) SetState(newState string, attributes BinarySensorAttributes) BinarySensorState {
 	body := struct {
 		State      string                 `json:"state"`
 		Attributes BinarySensorAttributes `json:"attributes"`
@@ -65,17 +71,10 @@ func (bs BinarySensor) SetState(newState string, attributes BinarySensorAttribut
 	return state
 }
 
-type BinarySensorStateChanged struct {
-	EntityID          string
-	BinarySensorState BinarySensorState
-}
-
-var bSensorSubs = make(map[string]chan BinarySensorStateChanged)
-
-func ListenBSS(entityID string) chan BinarySensorStateChanged {
-	if bSensorSubs[entityID] == nil {
-		bSensorSubs[entityID] = make(chan BinarySensorStateChanged)
+func (bs *BinarySensor) Listen() chan BinarySensorStateChanged {
+	if bSensorSubs[bs.ID] == nil {
+		bSensorSubs[bs.ID] = make(chan BinarySensorStateChanged)
 	}
 
-	return bSensorSubs[entityID]
+	return bSensorSubs[bs.ID]
 }
