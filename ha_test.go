@@ -39,11 +39,11 @@ func TestSwitch(t *testing.T) {
 	test := HA.NewSwitch("some_switch")
 
 	// initialize attributes so we can add a little flag for testing
-	s := SwitchAttributes{}
+	s := Attributes{}
 
 	// get initial state, assert type
 	state := test.GetState()
-	assert.IsType(t, SwitchState{}, state)
+	assert.IsType(t, State{}, state)
 
 	// set on and check returning state to be on
 	state = test.SetState("on", s)
@@ -55,7 +55,9 @@ func TestSwitch(t *testing.T) {
 
 	// changing it to on, the service won't trigger because it's a dummy entity
 	// but should give us a status code
-	status := test.Change("turn_on")
+	status := test.Change(ServiceCall{
+		Service: "turn_on",
+	})
 	assert.Equal(t, 200, status)
 	log.Println(status)
 
@@ -64,17 +66,17 @@ func TestSwitch(t *testing.T) {
 
 	// now we'll prepare the special payload with the "testing" flag
 	go func() {
-		s = SwitchAttributes{"Test": "testing"}
+		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
 	// now we listen for the channel, see if we get mr. flag in the attributes
-	func(listen chan SwitchStateChanged) {
+	func(listen chan StateChangedEvent) {
 		for l := range listen {
-			if l.SwitchState.Attributes["Test"] == "testing" {
-				assert.Equal(t, "on", l.SwitchState.State)
+			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
+				assert.Equal(t, "on", l.Event.Data.NewState.State)
 
-				s = SwitchAttributes{"Test": ""}
+				s = Attributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}
@@ -86,30 +88,32 @@ func TestSwitch(t *testing.T) {
 func TestLight(t *testing.T) {
 	test := HA.NewLight("some_light")
 	state := test.GetState()
-	assert.IsType(t, LightState{}, state)
+	assert.IsType(t, State{}, state)
 
-	s := LightAttributes{}
+	s := Attributes{}
 	state = test.SetState("on", s)
 	assert.Equal(t, "on", state.State)
 
 	state = test.SetState("off", s)
 	assert.Equal(t, "off", state.State)
 
-	state = test.Change("turn_on")
-	assert.IsType(t, LightState{}, state)
+	state = test.Change(ServiceCall{
+		Service: "turn_on",
+	})
+	assert.IsType(t, State{}, state)
 
 	listen := test.Listen()
 	go func() {
-		s = LightAttributes{"Test": "testing"}
+		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
-	func(listen chan LightStateChanged) {
+	func(listen chan StateChangedEvent) {
 		for l := range listen {
-			if l.LightState.Attributes["Test"] == "testing" {
-				assert.Equal(t, "on", l.LightState.State)
+			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
+				assert.Equal(t, "on", l.Event.Data.NewState.State)
 
-				s = LightAttributes{"Test": ""}
+				s = Attributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}
@@ -122,9 +126,9 @@ func TestLight(t *testing.T) {
 func TestSensor(t *testing.T) {
 	test := HA.NewSensor("some_sensor")
 	state := test.GetState()
-	assert.IsType(t, SensorState{}, state)
+	assert.IsType(t, State{}, state)
 
-	s := SensorAttributes{}
+	s := Attributes{}
 	state = test.SetState("on", s)
 	assert.Equal(t, "on", state.State)
 
@@ -133,16 +137,16 @@ func TestSensor(t *testing.T) {
 
 	listen := test.Listen()
 	go func() {
-		s = SensorAttributes{"Test": "testing"}
+		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
-	func(listen chan SensorStateChanged) {
+	func(listen chan StateChangedEvent) {
 		for l := range listen {
-			if l.SensorState.Attributes["Test"] == "testing" {
-				assert.Equal(t, "on", l.SensorState.State)
+			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
+				assert.Equal(t, "on", l.Event.Data.NewState.State)
 
-				s = SensorAttributes{"Test": ""}
+				s = Attributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}
@@ -155,9 +159,9 @@ func TestSensor(t *testing.T) {
 func TestBinarySensor(t *testing.T) {
 	test := HA.NewBinarySensor("some_binary_sensor")
 	state := test.GetState()
-	assert.IsType(t, BinarySensorState{}, state)
+	assert.IsType(t, State{}, state)
 
-	s := BinarySensorAttributes{}
+	s := Attributes{}
 	state = test.SetState("on", s)
 	assert.Equal(t, "on", state.State)
 
@@ -166,16 +170,16 @@ func TestBinarySensor(t *testing.T) {
 
 	listen := test.Listen()
 	go func() {
-		s = BinarySensorAttributes{"Test": "testing"}
+		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
 	}()
 
-	func(listen chan BinarySensorStateChanged) {
+	func(listen chan StateChangedEvent) {
 		for l := range listen {
-			if l.BinarySensorState.Attributes["Test"] == "testing" {
-				assert.Equal(t, "on", l.BinarySensorState.State)
+			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
+				assert.Equal(t, "on", l.Event.Data.NewState.State)
 
-				s = BinarySensorAttributes{"Test": ""}
+				s = Attributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			}

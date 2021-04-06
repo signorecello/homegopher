@@ -5,56 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 )
 
 type BinarySensor struct {
 	ID     string
-	State  BinarySensorState
+	State  State
 	Client Connection
 }
 
-type BinarySensorAttributes map[string]interface{}
+var bSensorSubs = make(map[string]chan StateChangedEvent)
 
-type BinarySensorState struct {
-	EntityID    string                 `json:"entity_id"`
-	LastChanged time.Time              `json:"last_changed"`
-	State       string                 `json:"state"`
-	Attributes  BinarySensorAttributes `json:"attributes"`
-	LastUpdated time.Time              `json:"last_updated"`
-	Context     struct {
-		ID       string      `json:"id"`
-		ParentID interface{} `json:"parent_id"`
-		UserID   string      `json:"user_id"`
-	} `json:"context"`
-}
-
-type BinarySensorStateChanged struct {
-	EntityID          string
-	BinarySensorState BinarySensorState
-}
-
-var bSensorSubs = make(map[string]chan BinarySensorStateChanged)
-
-
-func (bs *BinarySensor) GetState() BinarySensorState {
+func (bs *BinarySensor) GetState() State {
 	conn := bs.Client
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "binary_sensor", bs.ID), nil)
 	req.Header.Set("Authorization", conn.Authorization)
 
 	res, _ := conn.Client.Do(req)
 
-	var state BinarySensorState
+	var state State
 	dec := json.NewDecoder(res.Body)
 	_ = dec.Decode(&state)
 
 	return state
 }
 
-func (bs *BinarySensor) SetState(newState string, attributes BinarySensorAttributes) BinarySensorState {
+func (bs *BinarySensor) SetState(newState string, attributes Attributes) State {
 	body := struct {
-		State      string                 `json:"state"`
-		Attributes BinarySensorAttributes `json:"attributes"`
+		State      string     `json:"state"`
+		Attributes Attributes `json:"attributes"`
 	}{newState, attributes}
 	reqBody, _ := json.Marshal(body)
 
@@ -64,16 +42,16 @@ func (bs *BinarySensor) SetState(newState string, attributes BinarySensorAttribu
 
 	res, _ := conn.Client.Do(req)
 
-	var state BinarySensorState
+	var state State
 	dec := json.NewDecoder(res.Body)
 	_ = dec.Decode(&state)
 
 	return state
 }
 
-func (bs *BinarySensor) Listen() chan BinarySensorStateChanged {
+func (bs *BinarySensor) Listen() chan StateChangedEvent {
 	if bSensorSubs[bs.ID] == nil {
-		bSensorSubs[bs.ID] = make(chan BinarySensorStateChanged)
+		bSensorSubs[bs.ID] = make(chan StateChangedEvent)
 	}
 
 	return bSensorSubs[bs.ID]

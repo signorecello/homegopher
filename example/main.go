@@ -28,18 +28,23 @@ func main() {
 
 	// setting state requires attributes, it's a bit of a manual list as some sensors have specific attributes
 	// just let me know if you need some specific attribute here
-	attributes := ha.SensorAttributes{}
+	attributes := ha.Attributes{}
 	sensor.SetState("off", attributes)
 
 	sw := HA.NewSwitch("some_switch")
-	sw.Change("turn_on")
+
+	sw.Change(ha.ServiceCall{
+		Service: "turn_on",
+	})
 
 	light := HA.NewLight("some_light")
-	light.Change("toggle")
+	light.Change(ha.ServiceCall{
+		Service: "toggle",
+	})
 
 	// don't forget the go keyword before NewWS otherwise the program will hang forever
 	go ha.NewWS(
-		5 * time.Second,
+		5*time.Second,
 		os.Getenv("WSURL"),
 		os.Getenv("AUTHORIZATION"),
 	)
@@ -55,8 +60,7 @@ func main() {
 
 	func() {
 		val := <-channel
-		log.Printf(val.SensorState.State)
+		log.Printf(val.Event.Data.NewState.State)
 	}()
-
 
 }

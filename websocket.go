@@ -8,20 +8,6 @@ import (
 	"time"
 )
 
-type Generic struct {
-	Type string `json:"type"`
-}
-
-type AuthRequired struct {
-	Type      string `json:"type"`
-	HAVersion string `json:"ha_version"`
-}
-
-type Auth struct {
-	Type        string `json:"type"`
-	AccessToken string `json:"access_token"`
-}
-
 type Result struct {
 	ID      int      `json:"id"`
 	Type    string   `json:"type"`
@@ -29,32 +15,14 @@ type Result struct {
 	Result  struct{} `json:"result"`
 }
 
-type SubscribeEvents struct {
-	ID        int    `json:"id"`
-	Type      string `json:"type"`
-	EventType string `json:"event_type"`
-}
-
-type GenericEvent struct {
+type StateChangedEvent struct {
 	ID    int    `json:"id"`
 	Type  string `json:"type"`
 	Event struct {
-		EventType string `json:"event_type"`
-	}
-}
-
-type GenericStateChangedEvent struct {
-	ID    int    `json:"id"`
-	Type  string `json:"type"`
-	Event struct {
-		Data struct {
-			EntityID string          `json:"entity_id"`
-			NewState json.RawMessage `json:"new_state"`
-			OldState json.RawMessage `json:"old_state"`
-		} `json:"data"`
-		EventType string    `json:"event_type"`
-		TimeFired time.Time `json:"time_fired"`
-		Origin    string    `json:"origin"`
+		EventType string       `json:"event_type"`
+		Data      StateChanged `json:"data"`
+		TimeFired time.Time    `json:"time_fired"`
+		Origin    string       `json:"origin"`
 		Context   struct {
 			ID       string      `json:"id"`
 			ParentID interface{} `json:"parent_id"`
@@ -106,7 +74,13 @@ func NewWS(timeout time.Duration, url string, auth string) {
 	}
 
 	for e := range event {
-		var ge GenericEvent
+		var ge struct {
+			ID    int    `json:"id"`
+			Type  string `json:"type"`
+			Event struct {
+				EventType string `json:"event_type"`
+			}
+		}
 		_ = json.Unmarshal(e, &ge)
 		haws.routeEvent(ge.Event.EventType, e)
 	}
@@ -115,7 +89,7 @@ func NewWS(timeout time.Duration, url string, auth string) {
 func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 	switch eventType {
 	case "state_changed":
-		var sce GenericStateChangedEvent
+		var sce StateChangedEvent
 		_ = json.Unmarshal(event, &sce)
 
 		split := strings.Split(sce.Event.Data.EntityID, ".")
@@ -125,46 +99,23 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 		//log.Println(entity)
 		switch domain {
 		case "light":
-			var l LightState
-			_ = json.Unmarshal(sce.Event.Data.NewState, &l)
-
 			select {
-			case lightSubs[entity] <- struct {
-				EntityID   string
-				LightState LightState
-			}{EntityID: entity, LightState: l}:
+			case lightSubs[entity] <- sce:
 			default:
 			}
 		case "sensor":
-			var s SensorState
-			_ = json.Unmarshal(sce.Event.Data.NewState, &s)
-
 			select {
-			case sensorSubs[entity] <- struct {
-				EntityID    string
-				SensorState SensorState
-			}{EntityID: entity, SensorState: s}:
+			case sensorSubs[entity] <- sce:
 			default:
 			}
 		case "binary_sensor":
-			var bs BinarySensorState
-			_ = json.Unmarshal(sce.Event.Data.NewState, &bs)
-
 			select {
-			case bSensorSubs[entity] <- struct {
-				EntityID          string
-				BinarySensorState BinarySensorState
-			}{EntityID: entity, BinarySensorState: bs}:
+			case bSensorSubs[entity] <- sce:
 			default:
 			}
 		case "switch":
-			var s SwitchState
-			_ = json.Unmarshal(sce.Event.Data.NewState, &s)
 			select {
-			case swSubs[entity] <- struct {
-				EntityID    string
-				SwitchState SwitchState
-			}{EntityID: entity, SwitchState: s}:
+			case swSubs[entity] <- sce:
 			default:
 			}
 		default:
@@ -174,7 +125,11 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 }
 
 func (h HAWS) subscribe(et string) {
-	e := SubscribeEvents{
+	e := struct {
+		ID        int    `json:"id"`
+		Type      string `json:"type"`
+		EventType string `json:"event_type"`
+	}{
 		ID:        1,
 		Type:      "subscribe_events",
 		EventType: et,
@@ -187,7 +142,14 @@ func (h HAWS) subscribe(et string) {
 }
 
 func (h HAWS) authenticate() {
-	auth := Auth{Type: "auth", AccessToken: h.Auth}
+	auth := struct {
+		Type        string `json:"type"`
+		AccessToken string `json:"access_token"`
+	}{
+		Type:        "auth",
+		AccessToken: h.Auth,
+	}
+
 	err := h.Conn.WriteJSON(auth)
 	if err != nil {
 		log.Println("write:", err)
@@ -209,12 +171,18 @@ func (h HAWS) listen(event chan json.RawMessage) {
 
 			h.checkLive()
 
-			var t Generic
+			var t struct {
+				Type string `json:"type"`
+			}
+
 			_ = json.Unmarshal(v, &t)
 
 			switch t.Type {
 			case "auth_required":
-				var ar AuthRequired
+				var ar struct {
+					Type      string `json:"type"`
+					HAVersion string `json:"ha_version"`
+				}
 				_ = json.Unmarshal(v, &ar)
 				h.authenticate()
 				break
