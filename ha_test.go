@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	HA Connection
+	HA          Connection
+	TestTimeout time.Duration = time.Second * 2
 )
 
 func TestMain(m *testing.M) {
@@ -68,6 +69,8 @@ func TestSwitch(t *testing.T) {
 	go func() {
 		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
+		time.Sleep(TestTimeout)
+		listen <- StateChangedEvent{Type: "fail"}
 	}()
 
 	// now we listen for the channel, see if we get mr. flag in the attributes
@@ -78,6 +81,9 @@ func TestSwitch(t *testing.T) {
 
 				s = Attributes{"Test": ""}
 				test.SetState("off", s)
+				return
+			} else if l.Type == "fail" {
+				assert.Fail(t, "Timeout")
 				return
 			}
 		}
@@ -106,6 +112,8 @@ func TestLight(t *testing.T) {
 	go func() {
 		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
+		time.Sleep(TestTimeout)
+		listen <- StateChangedEvent{Type: "fail"}
 	}()
 
 	func(listen chan StateChangedEvent) {
@@ -115,6 +123,9 @@ func TestLight(t *testing.T) {
 
 				s = Attributes{"Test": ""}
 				test.SetState("off", s)
+				return
+			} else if l.Type == "fail" {
+				assert.Fail(t, "Timeout")
 				return
 			}
 		}
@@ -139,6 +150,8 @@ func TestSensor(t *testing.T) {
 	go func() {
 		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
+		time.Sleep(TestTimeout)
+		listen <- StateChangedEvent{Type: "fail"}
 	}()
 
 	func(listen chan StateChangedEvent) {
@@ -148,6 +161,9 @@ func TestSensor(t *testing.T) {
 
 				s = Attributes{"Test": ""}
 				test.SetState("off", s)
+				return
+			} else if l.Type == "fail" {
+				assert.Fail(t, "Timeout")
 				return
 			}
 		}
@@ -172,6 +188,8 @@ func TestBinarySensor(t *testing.T) {
 	go func() {
 		s = Attributes{"Test": "testing"}
 		test.SetState("on", s)
+		time.Sleep(TestTimeout)
+		listen <- StateChangedEvent{Type: "fail"}
 	}()
 
 	func(listen chan StateChangedEvent) {
@@ -181,6 +199,9 @@ func TestBinarySensor(t *testing.T) {
 
 				s = Attributes{"Test": ""}
 				test.SetState("off", s)
+				return
+			} else if l.Type == "fail" {
+				assert.Fail(t, "Timeout")
 				return
 			}
 		}
