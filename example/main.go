@@ -2,10 +2,12 @@ package main
 
 import (
 	"github.com/joho/godotenv"
-	ha "github.com/signorecello/homegopher"
 	"log"
 	"os"
 	"time"
+	"github.com/signorecello/homegopher/ha"
+	"github.com/signorecello/homegopher/state"
+	"github.com/signorecello/homegopher/entities"
 )
 
 func main() {
@@ -22,25 +24,21 @@ func main() {
 	HA := ha.NewConnection(conn)
 
 	// example of the creation of a new sensor
-	sensor := HA.NewSensor("some_sensor")
+	sensor := entities.NewSensor("some_sensor", HA)
 	sensorState := sensor.GetState().State
 	log.Println(sensorState)
 
 	// setting state requires attributes, it's a bit of a manual list as some sensors have specific attributes
 	// just let me know if you need some specific attribute here
-	attributes := ha.Attributes{}
+	attributes := state.Attributes{}
 	sensor.SetState("off", attributes)
 
-	sw := HA.NewSwitch("some_switch")
+	sw := entities.NewSwitch("some_switch", HA)
 
-	sw.Change(ha.ServiceCall{
-		Service: "turn_on",
-	})
+	sw.TurnOn(entities.SwitchOpts{})
 
-	light := HA.NewLight("some_light")
-	light.Change(ha.ServiceCall{
-		Service: "toggle",
-	})
+	light := entities.NewLight("some_light", HA)
+	light.TurnOn(entities.LightOpts{})
 
 	// don't forget the go keyword before NewWS otherwise the program will hang forever
 	go ha.NewWS(

@@ -40,6 +40,7 @@ func (lsc *LightServiceCall) SetService(service string) {
 type LightOpts struct {
 	EntityID string `json:"entity_id"`
 	Kelvin string `json:"kelvin,omitempty"`
+	Transition string `json:"transition,omitempty"`
 	Brightness string `json:"brightness,omitempty"`
 }
 
