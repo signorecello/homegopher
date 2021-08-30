@@ -45,12 +45,12 @@ func TestSwitch(t *testing.T) {
 
 	// changing it, the service won't trigger because it's a dummy entity
 	// but should give us a status code
-	status := test.Change(ServiceCall{
+	status := test.Change(SwitchServiceCall{
 		Service: "turn_off",
 	})
 	assert.Equal(t, 200, status)
 
-	status = test.Change(ServiceCall{
+	status = test.Change(SwitchServiceCall{
 		Service: "turn_on",
 	})
 	assert.Equal(t, 200, status)
@@ -59,18 +59,20 @@ func TestSwitch(t *testing.T) {
 }
 
 func TestLight(t *testing.T) {
-	test := HA.NewLight("some_light")
+	test := HA.NewLight("secretaria_zp")
 	state := test.GetState()
 	assert.IsType(t, State{}, state)
 
-	state = test.Change(ServiceCall{
-		Service: "turn_on",
-	})
+	// state = test.Change(LightServiceCall{
+	// 	Service: "turn_on",
+	// })
+	state = test.TurnOff()
+	state = test.TurnOn(LightOpts{Kelvin: "2000", Brightness: "10"})
 	assert.IsType(t, State{}, state)
 
-	state = test.Change(ServiceCall{
-		Service: "turn_off",
-	})
+	// state = test.Change(LightServiceCall{
+	// 	Service: "turn_off",
+	// })
 	assert.IsType(t, State{}, state)
 }
 

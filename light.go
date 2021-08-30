@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -12,6 +14,21 @@ type Light struct {
 	State  State
 	Client Connection
 }
+
+type LightServiceCall struct {
+	Service string `json:"service"`
+	ServiceData struct {
+		EntityID string `json:"entity_id"`
+		Kelvin string `json:"kelvin,omitempty"`
+		Brightness string `json:"brightness,omitempty"`
+	} `json:"service_data"`
+}
+
+type LightOpts struct {
+	Kelvin string `json:"kelvin,omitempty"`
+	Brightness string `json:"brightness,omitempty"`
+}
+
 
 var lightSubs = make(map[string]chan StateChangedEvent)
 
@@ -29,14 +46,32 @@ func (l *Light) GetState() State {
 	return state
 }
 
-func (l *Light) Change(data ServiceCall) State {
+
+func (l *Light) TurnOn(opts LightOpts) State {
+	state := l.Change(LightServiceCall{
+		Service: "turn_on",
+	}, &opts);
+	return state
+}
+
+
+func (l *Light) TurnOff() State {
+	state := l.Change(LightServiceCall{
+		Service: "turn_off",
+	}, nil);
+	return state
+}
+
+func (l *Light) Change(data LightServiceCall, opts *LightOpts) State {
+	if opts != nil {data.ServiceData.Kelvin = opts.Kelvin}
 	body := data.ServiceData
 
-	if (ServiceCall{}.ServiceData) == body {
-		body.EntityID = fmt.Sprintf("%s.%s", "light", l.ID)
-	}
+	log.Println(body)
+
+	body.EntityID = fmt.Sprintf("%s.%s", "light", l.ID)
 
 	reqBody, _ := json.Marshal(body)
+	log.Println("BODY: ", string(reqBody))
 
 	client := l.Client
 
@@ -45,6 +80,10 @@ func (l *Light) Change(data ServiceCall) State {
 	req.Header.Set("Content-Type", "application/json")
 
 	res, _ := client.Client.Do(req)
+	log.Println("RES ", res)
+	
+	resBody, _ := ioutil.ReadAll(res.Body)
+	log.Println(string(resBody))
 
 	var state State
 	dec := json.NewDecoder(res.Body)

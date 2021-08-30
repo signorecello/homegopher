@@ -22,10 +22,3 @@ type StateChanged struct {
 	NewState State  `json:"new_state"`
 	OldState State  `json:"old_state"`
 }
-
-type ServiceCall struct {
-	Service     string `json:"service"`
-	ServiceData struct {
-		EntityID string `json:"entity_id"`
-	} `json:"service_data"`
-}

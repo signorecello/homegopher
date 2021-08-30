@@ -14,6 +14,13 @@ type Switch struct {
 	Client Connection
 }
 
+type SwitchServiceCall struct {
+	Service string `json:"service"`
+	ServiceData struct {
+		EntityID string `json:"entity_id"`
+	} `json:"service_data"`
+}
+
 var swSubs = make(map[string]chan StateChangedEvent)
 
 func (s *Switch) GetState() State {
@@ -31,11 +38,10 @@ func (s *Switch) GetState() State {
 }
 
 
-func (s *Switch) Change(data ServiceCall) int {
+func (s *Switch) Change(data SwitchServiceCall) int {
 	body := data.ServiceData
-	if (ServiceCall{}.ServiceData) == body {
-		body.EntityID = fmt.Sprintf("%s.%s", "switch", s.ID)
-	}
+	body.EntityID = fmt.Sprintf("%s.%s", "switch", s.ID)
+	
 
 	reqBody, _ := json.Marshal(body)
 
