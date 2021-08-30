@@ -1,4 +1,4 @@
-package homegopher
+package ha
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 	"time"
+	"github.com/signorecello/homegopher/events"
 )
 
 type Result struct {
@@ -15,21 +16,6 @@ type Result struct {
 	Result  struct{} `json:"result"`
 }
 
-type StateChangedEvent struct {
-	ID    int    `json:"id"`
-	Type  string `json:"type"`
-	Event struct {
-		EventType string       `json:"event_type"`
-		Data      StateChanged `json:"data"`
-		TimeFired time.Time    `json:"time_fired"`
-		Origin    string       `json:"origin"`
-		Context   struct {
-			ID       string      `json:"id"`
-			ParentID interface{} `json:"parent_id"`
-			UserID   string      `json:"user_id"`
-		} `json:"context"`
-	} `json:"event"`
-}
 
 type HAWS struct {
 	URL       string
@@ -89,7 +75,7 @@ func NewWS(timeout time.Duration, url string, auth string) {
 func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 	switch eventType {
 	case "state_changed":
-		var sce StateChangedEvent
+		var sce events.StateChangedEvent
 		_ = json.Unmarshal(event, &sce)
 
 		split := strings.Split(sce.Event.Data.EntityID, ".")
@@ -100,22 +86,22 @@ func (h HAWS) routeEvent(eventType string, event json.RawMessage) {
 		switch domain {
 		case "light":
 			select {
-			case lightSubs[entity] <- sce:
+			case LightSubs[entity] <- sce:
 			default:
 			}
 		case "sensor":
 			select {
-			case sensorSubs[entity] <- sce:
+			case SensorSubs[entity] <- sce:
 			default:
 			}
 		case "binary_sensor":
 			select {
-			case bSensorSubs[entity] <- sce:
+			case BSensorSubs[entity] <- sce:
 			default:
 			}
 		case "switch":
 			select {
-			case swSubs[entity] <- sce:
+			case SwitchSubs[entity] <- sce:
 			default:
 			}
 		default:

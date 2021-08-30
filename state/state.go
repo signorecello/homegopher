@@ -1,6 +1,8 @@
-package homegopher
+package state
 
-import "time"
+import (
+	"time"
+)
 
 type State struct {
 	EntityID    string     `json:"entity_id"`
@@ -17,8 +19,3 @@ type State struct {
 
 type Attributes map[string]interface{}
 
-type StateChanged struct {
-	EntityID string `json:"entity_id"`
-	NewState State  `json:"new_state"`
-	OldState State  `json:"old_state"`
-}

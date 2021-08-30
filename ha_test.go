@@ -7,25 +7,29 @@ import (
 	"os"
 	"testing"
 	"time"
+	"github.com/signorecello/homegopher/ha"
+	"github.com/signorecello/homegopher/state"
+	"github.com/signorecello/homegopher/entities"
+	"github.com/signorecello/homegopher/events"
 )
 
 var (
-	HA          Connection
+	HA          ha.Connection
 	TestTimeout time.Duration = time.Second * 2
 )
 
 func TestMain(m *testing.M) {
 	_ = godotenv.Load()
 
-	conn := Connection{
+	conn := ha.Connection{
 		Prefix:        os.Getenv("PREFIX"),
 		Host:          os.Getenv("HOST"),
 		Path:          os.Getenv("HOST_PATH"),
 		Port:          os.Getenv("PORT"),
 		Authorization: os.Getenv("AUTHORIZATION"),
 	}
-	HA = NewConnection(conn)
-	go NewWS(
+	HA = ha.NewConnection(conn)
+	go ha.NewWS(
 		time.Second*10,
 		os.Getenv("WSURL"),
 		os.Getenv("AUTHORIZATION"),
@@ -37,71 +41,63 @@ func TestMain(m *testing.M) {
 
 func TestSwitch(t *testing.T) {
 	// initialize switch
-	test := HA.NewSwitch("some_switch")
+	test := entities.NewSwitch("some_switch", HA)
 
 	// get initial state, assert type
-	state := test.GetState()
-	assert.IsType(t, State{}, state)
+	st := test.GetState()
+	assert.IsType(t, state.State{}, st)
 
-	// changing it, the service won't trigger because it's a dummy entity
-	// but should give us a status code
-	status := test.Change(SwitchServiceCall{
-		Service: "turn_off",
-	})
-	assert.Equal(t, 200, status)
+	// changing it
+	status := test.TurnOff()
+	assert.IsType(t, state.State{}, st)
 
-	status = test.Change(SwitchServiceCall{
-		Service: "turn_on",
-	})
-	assert.Equal(t, 200, status)
+	status = test.TurnOn(entities.SwitchOpts{})
+	assert.IsType(t, state.State{}, st)
+
 	log.Println(status)
 
 }
 
 func TestLight(t *testing.T) {
-	test := HA.NewLight("secretaria_zp")
-	state := test.GetState()
-	assert.IsType(t, State{}, state)
+	test := entities.NewLight("secretaria_zp", HA)
+	st := test.GetState()
+	assert.IsType(t, state.State{}, st)
 
-	// state = test.Change(LightServiceCall{
-	// 	Service: "turn_on",
-	// })
-	state = test.TurnOff()
-	state = test.TurnOn(LightOpts{Kelvin: "2000", Brightness: "10"})
-	assert.IsType(t, State{}, state)
+	st = test.TurnOff()
+	assert.IsType(t, state.State{}, st)
 
-	// state = test.Change(LightServiceCall{
-	// 	Service: "turn_off",
-	// })
-	assert.IsType(t, State{}, state)
+	st = test.TurnOn(entities.LightOpts{Brightness: "255"})
+	assert.IsType(t, state.State{}, st)
+
+	assert.IsType(t, state.State{}, st)
 }
 
 func TestSensor(t *testing.T) {
-	test := HA.NewSensor("some_sensor")
-	state := test.GetState()
-	assert.IsType(t, State{}, state)
+	test := entities.NewSensor("some_sensor", HA)
+	st := test.GetState()
+	assert.IsType(t, state.State{}, st)
 
-	s := Attributes{}
-	state = test.SetState("on", s)
-	assert.Equal(t, "on", state.State)
+	s := state.Attributes{}
+	st = test.SetState("on", s)
+	assert.Equal(t, "on", st.State)
 
-	state = test.SetState("off", s)
-	assert.Equal(t, "off", state.State)
+	st = test.SetState("off", s)
+	assert.Equal(t, "off", st.State)
 
 	listen := test.Listen()
 	go func() {
-		s = Attributes{"Test": "testing"}
+		s = state.Attributes{"Test": "testing"}
 		test.SetState("on", s)
 		time.Sleep(TestTimeout)
-		listen <- StateChangedEvent{Type: "fail"}
+		listen <- events.StateChangedEvent{Type: "fail"}
 	}()
 
-	func(listen chan StateChangedEvent) {
+	func(listen chan events.StateChangedEvent) {
 		for l := range listen {
 			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
 				assert.Equal(t, "on", l.Event.Data.NewState.State)
 
-				s = Attributes{"Test": ""}
+				s = state.Attributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			} else if l.Type == "fail" {
@@ -115,31 +111,31 @@ func TestSensor(t *testing.T) {
 }
 
 func TestBinarySensor(t *testing.T) {
-	test := HA.NewBinarySensor("some_binary_sensor")
-	state := test.GetState()
-	assert.IsType(t, State{}, state)
+	test := entities.NewBinarySensor("some_binary_sensor", HA)
+	st := test.GetState()
+	assert.IsType(t, state.State{}, st)
 
-	s := Attributes{}
-	state = test.SetState("on", s)
-	assert.Equal(t, "on", state.State)
+	s := state.Attributes{}
+	st = test.SetState("on", s)
+	assert.Equal(t, "on", st.State)
 
-	state = test.SetState("off", s)
-	assert.Equal(t, "off", state.State)
+	st = test.SetState("off", s)
+	assert.Equal(t, "off", st.State)
 
 	listen := test.Listen()
 	go func() {
-		s = Attributes{"Test": "testing"}
+		s = state.Attributes{"Test": "testing"}
 		test.SetState("on", s)
 		time.Sleep(TestTimeout)
-		listen <- StateChangedEvent{Type: "fail"}
+		listen <- events.StateChangedEvent{Type: "fail"}
 	}()
 
-	func(listen chan StateChangedEvent) {
+	func(listen chan events.StateChangedEvent) {
 		for l := range listen {
 			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
 				assert.Equal(t, "on", l.Event.Data.NewState.State)
 
-				s = Attributes{"Test": ""}
+				s = state.Attributes{"Test": ""}
 				test.SetState("off", s)
 				return
 			} else if l.Type == "fail" {

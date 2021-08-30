@@ -1,9 +1,10 @@
-package homegopher
+package ha
 
 import (
 	"fmt"
 	"log"
 	"net/http"
+	"github.com/signorecello/homegopher/events"
 )
 
 type Connection struct {
@@ -62,20 +63,8 @@ func (c Connection) GetHealth() int {
 	}
 }
 
-func (c Connection) NewSwitch(ID string) Switch {
-	return Switch{ID: ID, Client: c}
-}
 
-func (c Connection) NewSensor(ID string) Sensor {
-	return Sensor{ID: ID, Client: c}
-}
-
-
-func (c Connection) NewBinarySensor(ID string) BinarySensor {
-	return BinarySensor{ID: ID, Client: c}
-}
-
-func (c Connection) NewLight(ID string) Light {
-	return Light{ID: ID, Client: c}
-}
-
+var LightSubs = make(map[string]chan events.StateChangedEvent)
+var BSensorSubs = make(map[string]chan events.StateChangedEvent)
+var SensorSubs = make(map[string]chan events.StateChangedEvent)
+var SwitchSubs = make(map[string]chan events.StateChangedEvent)
