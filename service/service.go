@@ -1,6 +1,5 @@
 package service
 
-
 type ServiceCall interface {
 	GetServiceOpts() ServiceOpts
 	SetServiceOpts(ServiceOpts) ServiceOpts

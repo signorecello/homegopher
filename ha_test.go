@@ -59,7 +59,7 @@ func TestSwitch(t *testing.T) {
 }
 
 func TestLight(t *testing.T) {
-	test := entities.NewLight("secretaria_zp", HA)
+	test := entities.NewLight("some_light", HA)
 	st := test.GetState()
 	assert.IsType(t, state.State{}, st)
 

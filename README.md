@@ -43,25 +43,23 @@ After this, you should be authenticated with your HA install.
 Want to get a sensor state?
 
 ```
-sensor := HA.NewSensor("some_sensor")
+sensor := entities.NewSensor("some_sensor", HA)
 sensorState := sensor.GetState().State
 ```
 
 ### Setting states
-You can set a sensor state uing
+You can set a sensor state using
 
 ```
-sensor := HA.NewSensor("some_sensor")
+sensor := entities.NewSensor("some_sensor", HA)
 sensorState := sensor.SetState("whatever state your want")
 ```
 
 ### Switching things off
-You can pass some ServiceCall to a switch or light, and use that to change whatever you want:
+You can turn lights on and off, passing Opts if you want something on servicedata (such as Kelvin, Brightness, etc)
 
 ```
-state = test.Change(ServiceCall{
-    Service: "turn_on",
-})
+state = test.TurnOn(entities.LightOpts{})
 ```
 
 ## Examples please?
