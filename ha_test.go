@@ -39,56 +39,23 @@ func TestSwitch(t *testing.T) {
 	// initialize switch
 	test := HA.NewSwitch("some_switch")
 
-	// initialize attributes so we can add a little flag for testing
-	s := Attributes{}
-
 	// get initial state, assert type
 	state := test.GetState()
 	assert.IsType(t, State{}, state)
 
-	// set on and check returning state to be on
-	state = test.SetState("on", s)
-	assert.Equal(t, "on", state.State)
-
-	// same for off
-	state = test.SetState("off", s)
-	assert.Equal(t, "off", state.State)
-
-	// changing it to on, the service won't trigger because it's a dummy entity
+	// changing it, the service won't trigger because it's a dummy entity
 	// but should give us a status code
 	status := test.Change(ServiceCall{
+		Service: "turn_off",
+	})
+	assert.Equal(t, 200, status)
+
+	status = test.Change(ServiceCall{
 		Service: "turn_on",
 	})
 	assert.Equal(t, 200, status)
 	log.Println(status)
 
-	// listening to the state changed channel for that switch
-	listen := test.Listen()
-
-	// now we'll prepare the special payload with the "testing" flag
-	go func() {
-		s = Attributes{"Test": "testing"}
-		test.SetState("on", s)
-		time.Sleep(TestTimeout)
-		listen <- StateChangedEvent{Type: "fail"}
-	}()
-
-	// now we listen for the channel, see if we get mr. flag in the attributes
-	func(listen chan StateChangedEvent) {
-		for l := range listen {
-			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
-				assert.Equal(t, "on", l.Event.Data.NewState.State)
-
-				s = Attributes{"Test": ""}
-				test.SetState("off", s)
-				return
-			} else if l.Type == "fail" {
-				assert.Fail(t, "Timeout")
-				return
-			}
-		}
-
-	}(listen)
 }
 
 func TestLight(t *testing.T) {
@@ -96,42 +63,15 @@ func TestLight(t *testing.T) {
 	state := test.GetState()
 	assert.IsType(t, State{}, state)
 
-	s := Attributes{}
-	state = test.SetState("on", s)
-	assert.Equal(t, "on", state.State)
-
-	state = test.SetState("off", s)
-	assert.Equal(t, "off", state.State)
-
 	state = test.Change(ServiceCall{
 		Service: "turn_on",
 	})
 	assert.IsType(t, State{}, state)
 
-	listen := test.Listen()
-	go func() {
-		s = Attributes{"Test": "testing"}
-		test.SetState("on", s)
-		time.Sleep(TestTimeout)
-		listen <- StateChangedEvent{Type: "fail"}
-	}()
-
-	func(listen chan StateChangedEvent) {
-		for l := range listen {
-			if l.Event.Data.NewState.Attributes["Test"] == "testing" {
-				assert.Equal(t, "on", l.Event.Data.NewState.State)
-
-				s = Attributes{"Test": ""}
-				test.SetState("off", s)
-				return
-			} else if l.Type == "fail" {
-				assert.Fail(t, "Timeout")
-				return
-			}
-		}
-
-	}(listen)
-
+	state = test.Change(ServiceCall{
+		Service: "turn_off",
+	})
+	assert.IsType(t, State{}, state)
 }
 
 func TestSensor(t *testing.T) {

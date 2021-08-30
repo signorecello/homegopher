@@ -29,27 +29,6 @@ func (l *Light) GetState() State {
 	return state
 }
 
-func (l *Light) SetState(newState string, attributes Attributes) State {
-	body := struct {
-		State      string     `json:"state"`
-		Attributes Attributes `json:"attributes"`
-	}{newState, attributes}
-
-	reqBody, _ := json.Marshal(body)
-
-	conn := l.Client
-	req, _ := http.NewRequest("POST", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "light", l.ID), bytes.NewReader(reqBody))
-	req.Header.Set("Authorization", conn.Authorization)
-
-	res, _ := conn.Client.Do(req)
-
-	var state State
-	dec := json.NewDecoder(res.Body)
-	_ = dec.Decode(&state)
-
-	return state
-}
-
 func (l *Light) Change(data ServiceCall) State {
 	body := data.ServiceData
 

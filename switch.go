@@ -30,25 +30,6 @@ func (s *Switch) GetState() State {
 	return state
 }
 
-func (s *Switch) SetState(newState string, attributes Attributes) State {
-	body := struct {
-		State      string     `json:"state"`
-		Attributes Attributes `json:"attributes"`
-	}{newState, attributes}
-	reqBody, _ := json.Marshal(body)
-
-	conn := s.Client
-	req, _ := http.NewRequest("POST", fmt.Sprintf("%s%s:%s%s/states/%s.%s", conn.Prefix, conn.Host, conn.Port, conn.Path, "switch", s.ID), bytes.NewReader(reqBody))
-	req.Header.Set("Authorization", conn.Authorization)
-
-	res, _ := conn.Client.Do(req)
-
-	var state State
-	dec := json.NewDecoder(res.Body)
-	_ = dec.Decode(&state)
-
-	return state
-}
 
 func (s *Switch) Change(data ServiceCall) int {
 	body := data.ServiceData
